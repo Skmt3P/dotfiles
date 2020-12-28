@@ -1,0 +1,47 @@
+{
+  "name": "@nodenv/nodenv-default-packages",
+  "version": "1.0.0",
+  "description": "Install default packages every time you install a new version of Node",
+  "homepage": "https://github.com/nodenv/nodenv-default-packages#readme",
+  "license": "MIT",
+  "contributors": [
+    "Jason Karns <jason@karns.name> (http://jason.karns.name)",
+    "Josh Hagins <hagins.josh@gmail.com>",
+    "Sam Stephenson <sstephenson@gmail.com> (http://sstephenson.us)"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nodenv/nodenv-default-packages.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nodenv/nodenv-default-packages/issues"
+  },
+  "directories": {
+    "bin": "bin",
+    "lib": "libexec",
+    "test": "test"
+  },
+  "files": [
+    "bin",
+    "etc"
+  ],
+  "scripts": {
+    "start": "bin/nodenv-default-packages",
+    "test": "bats ${CI:+--tap} test",
+    "posttest": "npm run lint",
+    "lint": "git ls-files bin etc **/*.*sh | xargs shellcheck",
+    "postversion": "npm publish",
+    "prepublishOnly": "npm run publish:github && npm run publish:brew",
+    "publish:brew": "brew-publish",
+    "publish:github": "git push --follow-tags"
+  },
+  "devDependencies": {
+    "@nodenv/nodenv": "^1.4.0",
+    "bats": "^1.1.0",
+    "bats-assert": "jasonkarns/bats-assert-1",
+    "bats-mock": "^1.0.1",
+    "bats-support": "jasonkarns/bats-support",
+    "brew-publish": "^2.3.1",
+    "shellcheck": "^0.4.4"
+  }
+}

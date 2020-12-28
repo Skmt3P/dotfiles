@@ -1,0 +1,162 @@
+language: c
+
+addons:
+  apt:
+    sources:
+      - sourceline: 'ppa:ondrej/php'
+    packages:
+      - libicu-dev
+      - libmcrypt-dev
+      - libonig-dev
+      - libtidy-dev
+      - libzip-dev
+      - libjpeg-dev
+      - re2c
+    update: true
+  homebrew:
+    packages:
+      - icu4c
+      - krb5
+      - libedit
+      - libmcrypt
+      - libxml2
+      - libzip
+      - libjpeg
+      - oniguruma
+      - openssl
+      - python
+      - re2c
+    update: true
+
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      env: DEFINITION=5.2.17
+      addons:
+        apt:
+          packges:
+            - php5-cli
+    - os: linux
+      dist: trusty
+      env: DEFINITION=5.3.29
+      addons:
+        apt:
+          packges:
+            - php5-cli
+    - os: linux
+      dist: trusty
+      env: DEFINITION=5.4.45
+      addons:
+        apt:
+          packges:
+            - php5-cli
+    - os: linux
+      dist: trusty
+      env: DEFINITION=5.5.38
+      addons:
+        apt:
+          packges:
+            - php5-cli
+    - os: linux
+      dist: trusty
+      env: DEFINITION=5.6.40
+      addons:
+        apt:
+          packges:
+            - php5-cli
+    - os: linux
+      dist: trusty
+      env: DEFINITION=7.0.33
+    - os: linux
+      dist: trusty
+      env: DEFINITION=7.1.33
+    - os: linux
+      dist: xenial
+      env: DEFINITION=7.2.29
+    - os: linux
+      dist: xenial
+      env: DEFINITION=7.3.16
+    - os: linux
+      dist: xenial
+      env: DEFINITION=7.4.4
+    - os: osx
+      osx_image: xcode9.4
+      env: DEFINITION=5.3.29
+    - os: osx
+      osx_image: xcode9.4
+      env: DEFINITION=5.4.45
+    - os: osx
+      osx_image: xcode9.4
+      env: DEFINITION=5.5.38
+    - os: osx
+      osx_image: xcode9.4
+      env: DEFINITION=5.6.40
+    - os: osx
+      osx_image: xcode9.4
+      env: DEFINITION=7.0.33
+    - os: osx
+      osx_image: xcode9.4
+      env: DEFINITION=7.1.33
+    - os: osx
+      osx_image: xcode9.4
+      env: DEFINITION=7.2.29
+    - os: osx
+      osx_image: xcode9.4
+      env: DEFINITION=7.3.16
+    - os: osx
+      osx_image: xcode9.4
+      env: DEFINITION=7.4.4
+
+before_install:
+  - export PHP_BUILD_EXTRA_MAKE_ARGUMENTS="-j2"
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        if [[ "$DEFINITION" =~ ^("5.2.".*)$ ]]; then
+            export PHP_BUILD_CONFIGURE_OPTS="--with-libdir=lib/x86_64-linux-gnu"
+        fi
+        if [[ "$DEFINITION" =~ ^("5.2.".*|"5.3.".*)$ ]]; then
+            sudo apt-get install -y autoconf2.13
+            export PHP_AUTOCONF=/usr/bin/autoconf2.13
+        fi
+        if [[ "$DEFINITION" =~ ^("7.3.".*)$ ]]; then
+            export PHP_BUILD_CONFIGURE_OPTS="--without-libzip"
+        fi
+        if [[ "$DEFINITION" =~ ^("7.4.".*)$ ]]; then
+            set -xe \
+              && mkdir -p /tmp/oniguruma \
+              && cd /tmp/oniguruma \
+              && curl -Ls https://github.com/kkos/oniguruma/releases/download/v6.9.4/onig-6.9.4.tar.gz \
+                | tar xzC /tmp/oniguruma --strip-components=1 \
+              && ./configure --prefix=/usr/local \
+              && make -j $(nproc) \
+              && sudo make install \
+              && cd $TRAVIS_BUILD_DIR
+        fi
+    fi
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+        if [[ "$DEFINITION" =~ ^("5.3.".*)$ ]]; then
+            brew install autoconf@2.13
+            export PHP_AUTOCONF=$(brew --prefix autoconf@2.13)/bin/autoconf213
+            export LIBS="-lssl -lcrypto"
+        fi
+        if [[ "$DEFINITION" =~ ^("5.".*)$ ]]; then
+            ./build-openssl-1.0.sh
+            export PHP_BUILD_CONFIGURE_OPTS="$PHP_BUILD_CONFIGURE_OPTS --with-openssl=/usr/local/opt/openssl@1.0"
+        fi
+        if [[ "$DEFINITION" =~ ^("7.4.".*)$ ]]; then
+            export PKG_CONFIG_PATH="$(brew --prefix krb5)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig:$(brew --prefix icu4c)/lib/pkgconfig:$(brew --prefix libedit)/lib/pkgconfig"
+        fi
+    fi
+install:
+  - git clone https://github.com/sstephenson/bats
+  - bats/install.sh $HOME
+  - export PATH=$HOME/bin:$HOME/libexec:$PATH
+  - bats --version
+
+script:
+  - ./run-tests.sh $DEFINITION
+
+after_failure:
+  - head -1000 $(ls -r /tmp/php-build*.log | head -n 1)
